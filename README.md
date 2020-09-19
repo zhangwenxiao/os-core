@@ -22,6 +22,7 @@ Ubuntu14.04
 - 克隆仓库
     ```shell
     git clone git@github.com:zhangwenxiao/os-core.git
+    cd os-core
     ``` 
 - 新建虚拟硬盘
     ```shell
