@@ -1,12 +1,12 @@
+# 显示方案
+display_library: sdl
+
 # 设置 Bochs 在运行过程中能够使用的内存，本例为 32MB
 megs: 32
 
 # 设置对应真实机器的 BIOS 和 VGA BIOS
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
-
-# 设置 Bochs 使用的磁盘
-# floppya: 1_44=a.img, status=inserted
 
 # 选择启动盘符
 boot: disk # 从硬盘启动
@@ -16,7 +16,7 @@ log: bochs.out
 
 # 关闭鼠标，打开键盘
 mouse: enabled=0
-keyboard: keymap=/usr/share/bochs/keymaps/x11-pc-us.map
+keyboard_mapping: enabled=1, map=/usr/share/bochs/keymaps/sdl-pc-us.map
 
 # 硬盘设置
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
