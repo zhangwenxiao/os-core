@@ -7,6 +7,10 @@ SECTION MBR vstart=0x7c00 ; 把起始地址编译为 0x7c00
     mov ss, ax     ; ss 堆栈段寄存器
     mov fs, ax     ; fs 80386 后添加的寄存器，无全称
     mov sp, 0x7c00 ; sp 堆栈指针寄存器
+    mov ax, 0xb800
+    mov gs, ax     ; gs 80386 后添加的寄存器，无全称
+                   ; 往 gs 中存入显存段基址
+                   ; 文本模式显存的起始地址是 0xb8000
 
 ; 清屏
 ; --------------------------------------------------
@@ -28,34 +32,27 @@ SECTION MBR vstart=0x7c00 ; 把起始地址编译为 0x7c00
         
     int 0x10       ; int 0x10
 
-; .get_cursor 获取当前光标位置，在光标处打印字符
-    mov ah, 3      ; 3 号子功能
-    mov bh, 0      ; 待获取光标的页号
+; 输出背景色绿色，前景色红色，并且跳动的字符串"1 MBR"
+mov byte [gs:0x00], '1'
+mov byte [gs:0x01], 0xA4 ; A 表示绿色背景、字符闪烁，4 表示前景色为红色
+                         ; 10100100
+                         ; [15]~[8], K=1, G=1, R=1
 
-    int 0x10       ; 输出：
-                   ; ch = 光标开始行，cl = 光标结束行
-                   ; dh = 光标所在行号，dl = 光标所在列号
+mov byte [gs:0x02], ' '
+mov byte [gs:0x03], 0xA4 ; 关键字 byte 用于指定操作数所占的空间
+                         ; 在这里表示将 0xA4 写入以 gs:0x00 为起始，大小 1 字节的内存中
+                         ; word、dword 分别表示 2 字节和 4 字节
 
-; 打印字符串
-    mov ax, message
-    mov bp, ax     ; es:bp 为串首地址
-    
-    mov cx, 5      ; cx 为串长度，不包括结束符 '\0'
-    mov ax, 0x1301 ; 13 号子功能
-                   ; ah = 13
-                   ; al = 01: 写字符方式，显式字符串，光标跟随移动
-    mov bx, 0x2    ; bh = 0，要显示的页号
-                   ; bl = 02，字符属性，黑底绿字
-    
-    int 0x10
+mov byte [gs:0x04], 'M'
+mov byte [gs:0x05], 0xA4
 
-    jmp $          ; 程序悬停在此
+mov byte [gs:0x06], 'B'
+mov byte [gs:0x07], 0xA4
 
-    message db "1 MBR"    ; db 字节型
-                          ; dw 字类型
-                          ; dd 双字型
-                          ; dq 四字型
-                          ; dt 十字节型 
-    times 510-($-$$) db 0 ; 填充文件末尾的魔数 0xaa55 和当前位置之间的空间
-                          ; 保证编译后生成的文件大小为 512 字节（硬盘一个扇区的大小）
-    db 0x55, 0xaa
+mov byte [gs:0x08], 'R'
+mov byte [gs:0x09], 0xA4
+
+jmp $ ; 死循环
+
+times 510-($-$$) db 0
+db 0x55, 0xaa
