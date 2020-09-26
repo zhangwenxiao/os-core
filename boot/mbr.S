@@ -1,5 +1,6 @@
 ; 主引导程序
 ; --------------------------------------------------
+%include "boot.inc"
 SECTION MBR vstart=0x7c00 ; 把起始地址编译为 0x7c00
     mov ax, cs     ; cs 代码段寄存器
     mov ds, ax     ; dx 数据段寄存器
@@ -32,27 +33,82 @@ SECTION MBR vstart=0x7c00 ; 把起始地址编译为 0x7c00
         
     int 0x10       ; int 0x10
 
-; 输出背景色绿色，前景色红色，并且跳动的字符串"1 MBR"
-mov byte [gs:0x00], '1'
-mov byte [gs:0x01], 0xA4 ; A 表示绿色背景、字符闪烁，4 表示前景色为红色
-                         ; 10100100
-                         ; [15]~[8], K=1, G=1, R=1
+    mov eax, LOADER_START_SECTOR ; loader 的起始扇区 LBA 地址
+    mov bx, LOADER_BASE_ADDR   ; 写入的地址
+    mov cx, 1                    ; 待读入的扇区数
+    call rd_disk_m_16            ; 以下读取程序的起始部分（一个扇区）
 
-mov byte [gs:0x02], ' '
-mov byte [gs:0x03], 0xA4 ; 关键字 byte 用于指定操作数所占的空间
-                         ; 在这里表示将 0xA4 写入以 gs:0x00 为起始，大小 1 字节的内存中
-                         ; word、dword 分别表示 2 字节和 4 字节
+    jmp LOADER_BASE_ADDR
 
-mov byte [gs:0x04], 'M'
-mov byte [gs:0x05], 0xA4
+; 读取硬盘 n 个扇区
+rd_disk_m_16:
+                                 ; eax = LBA 扇区号
+                                 ; bx = 将数据写入的内存地址
+                                 ; cx = 读入的扇区数
+    mov esi, eax    ; 备份 eax
+    mov di, cx      ; 备份 cx
 
-mov byte [gs:0x06], 'B'
-mov byte [gs:0x07], 0xA4
+    ; 1. 设置要读取的扇区数
+    mov dx, 0x1f2
+    mov al, cl
+    out dx, al      ; 读取的扇区数
 
-mov byte [gs:0x08], 'R'
-mov byte [gs:0x09], 0xA4
+    mov eax, esi    ; 恢复 ax
 
-jmp $ ; 死循环
+    ; 2. 将 LBA 地址存入 0x1f3 ~ 0x1f6
+    
+    ; LBA 地址 7 ~ 0 位写入端口 0x1f3
+    mov dx, 0x1f3
+    out dx, al
+
+    ; LBA 地址 15 ~ 8 位写入端口 0x1f4
+    mov cl, 8
+    shr eax, cl
+    mov dx, 0x1f4
+    out dx, al
+
+    ; LBA 地址 23 ~ 16 位写入端口 0x1f5
+    shr eax, cl
+    mov dx, 0x1f5
+    out dx, al
+
+    shr eax, cl
+    and al, 0x0f ; LBA 地址的第 24 ~ 17 位
+    or al, 0xe0  ; 设置 7 ~ 4 位为 1110，表示 LBA 模式
+    mov dx, 0x1f6
+    out dx, al
+
+    ; 3. 向 0x1f7 端口写入读命令，0x20
+    mov dx, 0x1f7
+    mov al, 0x20
+    out dx, al
+
+    ; 4. 检测硬盘状态
+    .not_ready:
+        ; 从 Status 寄存器读硬盘状态
+        nop
+        in al, dx
+        and al, 0x88   ; 第 3 位为 1 表示硬盘控制器已准备好数据传输
+                       ; 第 7 位为 1 表示硬盘忙
+        cmp al, 0x08
+        jnz .not_ready ; 若硬盘未准备好，继续等
+    
+    ; 5. 从 0x1f0 端口读数据
+    mov ax, di     ; di = 要读入的扇区数
+    mov dx, 256    ; 一个扇区有 512 个字节，ax 寄存器宽度是 2 字节
+                   ; 一共需要读 di * 512 / 2 = di * 256 次
+    mul dx         ; ax = ax * dx
+    mov cx, ax     ; cx = 读硬盘次数
+
+    mov dx, 0x1f0
+
+    .go_on_read:
+        in ax, dx
+        mov [bx], ax     ; bx=loader将被写到的内存地址
+        add bx, 2        ; ax 的宽度是两字节，内存地址需要往后移两个字节
+        loop .go_on_read 
+        ret
+
 
 times 510-($-$$) db 0
 db 0x55, 0xaa
