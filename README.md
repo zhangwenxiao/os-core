@@ -38,7 +38,7 @@ Ubuntu14.04
 - 将 mbr.bin 和 loader.bin 写入虚拟硬盘
     ```shell
     dd if=boot/mbr.bin of=hd60M.img bs=512 count=1 conv=notrunc
-    dd if=boot/loader.bin of=hd60M.img bs=512 count=1 seek=2 conv=notrunc
+    dd if=boot/loader.bin of=hd60M.img bs=512 count=2 seek=2 conv=notrunc
     ```
 - 运行 bochs
     ```shell

@@ -34,8 +34,8 @@ SECTION MBR vstart=0x7c00 ; 把起始地址编译为 0x7c00
     int 0x10       ; int 0x10
 
     mov eax, LOADER_START_SECTOR ; loader 的起始扇区 LBA 地址
-    mov bx, LOADER_BASE_ADDR   ; 写入的地址
-    mov cx, 1                    ; 待读入的扇区数
+    mov bx, LOADER_BASE_ADDR     ; 写入的地址
+    mov cx, 4                    ; 待读入的扇区数
     call rd_disk_m_16            ; 以下读取程序的起始部分（一个扇区）
 
     jmp LOADER_BASE_ADDR
