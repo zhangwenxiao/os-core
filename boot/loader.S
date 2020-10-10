@@ -1,7 +1,6 @@
 %include "boot.inc"
 SECTION LOADER vstart=LOADER_BASE_ADDR
 LOADER_STACK_TOP equ LOADER_BASE_ADDR
-jmp loader_start
 
 ; 构建 GDT 及其内部的描述符
 GDT_BASE: dd 0x00000000
@@ -23,21 +22,94 @@ SELECTOR_CODE  equ (0x0001<<3) + TI_GDT + RPL0
 SELECTOR_DATA  equ (0x0002<<3) + TI_GDT + RPL0
 SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0
 
+; 此处偏移 loader.bin 文件头 0x200 字节（GDT 有 64 项，每项 8 字节，64 * 8 = 0x200）
+; total_mem_bytes 用于保存内存容量，以字节为单位
+total_mem_bytes dd 0
+
 ; 以下是 GDT 的指针，前 2 字节是 GDT 界限，后 4 字节是 GDT 起始地址
 gdt_ptr dw GDT_LIMIT
         dd GDT_BASE
 
-loadermsg db '2 loader in real.'
+; 人工对齐: total_mem_bytes(4) + gdt_ptr(6) + ards_buf(244) + ards_nr(2), 共 256 字节
+ards_buf times 244 db 0
+ards_nr dw 0 ; ards_nr 用于记录 ARDS 结构体数量
 
 loader_start:
 
-    mov sp, LOADER_BASE_ADDR
-    mov bp, loadermsg        ; ES:BP = 字符串地址
-    mov cx, 17               ; CX = 字符串长度
-    mov ax, 0x1301           ; 13号子功能 (AH = 13) 显示输出方式 AL = 01h
-    mov bx, 0x001f           ; 页号为 0 (BH = 0) 蓝底粉红字 (BL = 1fh)
-    mov dx, 0x1800           ; 行号为 18h (DH = 18h) 列号为 0 (DL = 0)
-    int 0x10                 ; 10h 号中断
+    ; int 15h eax = 0000E820h, edx = 534D4150h 获取内存布局
+    xor ebx, ebx        ; 第一次调用时，ebx 要置 0
+    mov edx, 0x534d4150
+    mov di, ards_buf    ; ards 结构缓冲区
+
+.e820_mem_get_loop: ; 循环获取每个 ARDS 内存范围描述结构
+    mov eax, 0x0000e820         ; 执行 int 0x15 后，eax 值变为 0x534d4150
+                                ; 所以需要更新值为子功能号
+    mov ecx, 20                 ; ARDS 地址范围描述符结构大小是 20 字节
+    int 0x15
+
+    jc .e820_failed_so_try_e801 ; CF = 1 表示有错误发生，尝试 0xe801 功能
+
+    add di, cx                  ; 使 di 增加 20 字节指向缓冲区中新的 ARDS 结构位置
+    inc word [ards_nr]          ; 记录 ARDS 数量
+    cmp ebx, 0                  ; 若 ebx 为 0 且 cf 不为 1, 说明 ards 已全部返回
+    jnz .e820_mem_get_loop      ; ebx != 0，循环读下一个 ARDS
+
+    ; 在所有 ARDS 结构中，找出 (base_add_low + length_low) 的最大值，即内存容量
+    mov cx, [ards_nr] ; 循环次数是 ARDS 的数量
+    mov ebx, ards_buf
+    xor edx, edx      ; edx 为最大内存容量，先清零
+
+.find_max_mem_area:
+    mov eax, [ebx]   ; base_add_low
+    add eax, [ebx+8] ; length_low
+    add ebx, 20      ; 只想缓冲区中下一个 ARDS 结构
+    cmp edx, eax     ; edx 保存最大内存容量
+    jge .next_ards
+    mov edx, eax     ; edx <= eax 则进行赋值 edx = eax
+.next_ards:
+    loop .find_max_mem_area
+    jmp .mem_get_ok
+
+    ; int 15h ax = E801h 获取内存大小, 最大支持 4G
+.e820_failed_so_try_e801:
+    mov ax, 0xe801
+    int 0x15
+    jc .e801_failed_so_try88 ; 若 e801 方法失败，就尝试 0x88 方法
+
+    ; 1 计算低 15MB 的内存
+    mov cx, 0x400 ; 1 KB = 0x400 字节
+    mul cx        ; ax * 0x400, 乘积的高 16 位在 dx 寄存器，低 16 位在 ax 寄存器
+    shl edx, 16
+    and eax, 0x0000FFFF
+    or edx, eax   ; (dx << 16 | eax * 0x0000FFFF) 得到完整的 32 位积（即低 15MB 内存的字节数）
+    add edx, 0x100000   ; ax 只是 15MB, 故要加 1MB
+    mov esi, edx        ; 先把低 15MB 的内存容量存入 esi 寄存器备份
+
+    ; 2 计算 16MB 以上内存的字节数
+    xor eax, eax
+    mov ax, bx
+    mov ecx, 0x10000 ; 65KB = 0x10000 字节
+    mul ecx          ; eax * ecx, 积为 64 位
+                     ; 高 32 位存入 edx, 低 32 位存入 eax
+    add esi, eax     ; 此方法只能测出 4GB 以内的内存, 32 位 eax 已经足够
+    mov edx, esi     ; edx 位总内存字节数
+    jmp .mem_get_ok
+
+    ; int 15h ah = 0x88 获取内存大小，只能获取 64MB 之内
+.e801_failed_so_try88:
+    mov ah, 0x88
+    int 0x15
+    jc .error_hlt
+    and eax, 0x0000FFFF
+
+    mov cx, 0x400 ; 1KB = 0x400 字节
+    mul cx        ; cx * ax, 积的高 16 位在 dx 中，低 16 位在 ax 中
+    shl edx, 16   ; 把 dx 移到高 16 位
+    or edx, eax   ; 把积的低 16 位组合到 edx, 得到 32 位的积
+    add edx, 0x100000 ; 0x88 子功能只会返回 1MB 以上的内存, 实际内存要加上 1MB
+
+.mem_get_ok:
+    mov [total_mem_bytes], edx
 
     ; 准备进入保护模式
     
@@ -55,6 +127,9 @@ loader_start:
     mov cr0, eax
 
     jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线
+
+.error_hlt:
+    hlt
 
 [bits 32]
 p_mode_start:
