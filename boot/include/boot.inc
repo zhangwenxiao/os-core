@@ -1,6 +1,7 @@
 ; loader 和 kernel
-LOADER_BASE_ADDR    equ 0x900 ; loader 被 MBR 写到的内存地址
-LOADER_START_SECTOR equ 0x2   ; loader 所在硬盘 LBA 扇区
+LOADER_BASE_ADDR    equ 0x900    ; loader 被 MBR 写到的内存地址
+LOADER_START_SECTOR equ 0x2      ; loader 所在硬盘 LBA 扇区
+PAGE_DIR_TABLE_POS  equ 0x100000 ; 页目录表的物理地址
 
 ; GDT 描述符属性
 DESC_G_4K         equ 00000000_10000000_00000000_00000000b ; 段界限粒度为 4KB
@@ -25,9 +26,16 @@ DESC_DATA_HIGH4   equ (0x00 << 24) + DESC_G_4K + DESC_D_32 + DESC_L + DESC_AVL +
 DESC_VIDEO_HIGH4  equ (0x00 << 24) + DESC_G_4K + DESC_D_32 + DESC_L + DESC_AVL + DESC_LIMIT_VIDEO2 + DESC_P + DESC_DPL_0 + DESC_S_DATA + DESC_TYPE_DATA + 0x00
 
 ; 选择子属性
-RPL0 equ 00b
-RPL1 equ 01b
-RPL2 equ 10b
-RPL3 equ 11b
+RPL0   equ 00b
+RPL1   equ 01b
+RPL2   equ 10b
+RPL3   equ 11b
 TI_GDT equ 000b
 TI_LDT equ 100b
+
+; 页表相关属性
+PG_P    equ 1b
+PG_RW_R equ 00b
+PG_RW_W equ 10b
+PG_US_S equ 000b
+PG_US_U equ 100b

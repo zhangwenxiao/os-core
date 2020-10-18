@@ -141,6 +141,82 @@ p_mode_start:
     mov ax, SELECTOR_VIDEO
     mov gs, ax
 
-    mov byte [gs:160], 'P'
+    ; 创建页目录及页表并初始化页内存位图
+    call setup_page
+
+    ; 将描述符表地址及偏移量写入内存 gdt_ptr, 一会儿用新地址重新加载
+    sgdt [gdt_ptr] 
+
+    ; 将 gdt 描述符中视频段描述符中的段基址 + 0xc0000000
+    mov ebx, [gdt_ptr + 2]
+    or dword [ebx + 0x18 + 4], 0xc0000000
+
+    ; 将 gdt 的基址加上 0xc0000000 使其成为内核所在的高地址
+    add dword [gdt_ptr + 2], 0xc0000000
+
+    ; 将栈指针同样映射到内核地址
+    add esp, 0xc0000000
+
+    ; 把页目录地址赋给 cr3
+    mov eax, PAGE_DIR_TABLE_POS
+    mov cr3, eax
+
+    ; 打开 cr0 的 pg 位(第 31 位)
+    mov eax, cr0
+    or eax, 0x80000000
+    mov cr0, eax
+
+    ; 在开启分页后, 用 gdt 新的地址重新加载
+    lgdt [gdt_ptr] ; 重新加载
+
+    mov byte [gs:160], 'V'
 
     jmp $ ; 程序悬停
+
+; 创建页目录及页表
+setup_page:
+    mov ecx, 4096
+    mov esi, 0
+; 把页目录占用的空间逐字节清 0
+.clear_page_dir:
+    mov byte [PAGE_DIR_TABLE_POS + esi], 0
+    inc esi
+    loop .clear_page_dir
+; 开始创建页目录项(PDE)
+.create_pde:
+    mov eax, PAGE_DIR_TABLE_POS
+    add eax, 0x1000 ; eax = 第一个页表的位置及属性
+    mov ebx, eax
+
+    or eax, PG_US_U | PG_RW_W | PG_P
+
+    ; 第一个页目录项
+    mov [PAGE_DIR_TABLE_POS + 0x0], eax
+    mov [PAGE_DIR_TABLE_POS + 0xc00], eax ; 操作系统的虚拟地址是在 0xc0000000 以上(3GB ~ 4GB)
+
+    sub eax, 0x1000
+    mov [PAGE_DIR_TABLE_POS + 4092], eax ; 使最后一个目录项指向页目录表自己的地址
+; 创建页表项(PTR)
+    mov ecx, 256 ; 1M 低端内存 / 每页大小 4k = 256
+    mov esi, 0
+    mov edx, PG_US_U | PG_RW_W | PG_P
+.create_pte: ; 创建第一个页表的页表项(可以保存 1M 低端内存的映射关系)
+    mov [ebx + esi * 4], edx ; ebx = 第一个页表的地址
+
+    add edx, 4096
+    inc esi
+    loop .create_pte
+
+; 创建内核其它页表的 PDE
+    mov eax, PAGE_DIR_TABLE_POS
+    add eax, 0x2000 ; eax = 第二个页表的位置
+    or eax, PG_US_U | PG_RW_W | PG_P
+    mov ebx, PAGE_DIR_TABLE_POS
+    mov ecx, 254 ; 范围为第 769 ~ 1022 的所有目录项数量
+    mov esi, 769
+.create_kernel_pde:
+    mov [ebx + esi * 4], eax
+    inc esi
+    add eax, 0x1000
+    loop .create_kernel_pde
+    ret
