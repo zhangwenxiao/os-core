@@ -36,7 +36,7 @@ ards_nr dw 0 ; ards_nr 用于记录 ARDS 结构体数量
 
 loader_start:
 
-    ; int 15h eax = 0000E820h, edx = 534D4150h 获取内存布局
+; int 15h eax = 0000E820h, edx = 534D4150h 获取内存布局
     xor ebx, ebx        ; 第一次调用时，ebx 要置 0
     mov edx, 0x534d4150
     mov di, ards_buf    ; ards 结构缓冲区
@@ -108,6 +108,9 @@ loader_start:
     or edx, eax   ; 把积的低 16 位组合到 edx, 得到 32 位的积
     add edx, 0x100000 ; 0x88 子功能只会返回 1MB 以上的内存, 实际内存要加上 1MB
 
+.error_hlt:
+    hlt
+
 .mem_get_ok:
     mov [total_mem_bytes], edx
 
@@ -128,9 +131,6 @@ loader_start:
 
     jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线
 
-.error_hlt:
-    hlt
-
 [bits 32]
 p_mode_start:
     mov ax, SELECTOR_DATA
@@ -140,6 +140,13 @@ p_mode_start:
     mov esp, LOADER_STACK_TOP
     mov ax, SELECTOR_VIDEO
     mov gs, ax
+
+    ; 加载 kernel
+    mov eax, KERNEL_START_SECTOR  ; kernel.bin 所在的扇区号
+    mov ebx, KERNEL_BIN_BASE_ADDR ; 从磁盘读出后，写入到 ebx 指定的地址
+    mov ecx, 200                  ; 读入的扇区数
+
+    call rd_disk_m_32
 
     ; 创建页目录及页表并初始化页内存位图
     call setup_page
@@ -169,9 +176,12 @@ p_mode_start:
     ; 在开启分页后, 用 gdt 新的地址重新加载
     lgdt [gdt_ptr] ; 重新加载
 
-    mov byte [gs:160], 'V'
+    jmp SELECTOR_CODE:enter_kernel
 
-    jmp $ ; 程序悬停
+enter_kernel:
+    call kernel_init
+    mov esp, 0xc009f000
+    jmp KERNEL_ENTRY_POINT
 
 ; 创建页目录及页表
 setup_page:
@@ -191,7 +201,7 @@ setup_page:
     or eax, PG_US_U | PG_RW_W | PG_P
 
     ; 第一个页目录项
-    mov [PAGE_DIR_TABLE_POS + 0x0], eax
+    mov [PAGE_DIR_TABLE_POS], eax
     mov [PAGE_DIR_TABLE_POS + 0xc00], eax ; 操作系统的虚拟地址是在 0xc0000000 以上(3GB ~ 4GB)
 
     sub eax, 0x1000
@@ -219,4 +229,113 @@ setup_page:
     inc esi
     add eax, 0x1000
     loop .create_kernel_pde
+    ret
+
+; 保护模式的硬盘读取函数
+rd_disk_m_32:
+    mov esi, eax
+    mov di, cx
+
+    mov dx, 0x1f2
+    mov al, cl
+    out dx, al
+
+    mov eax, esi
+
+    mov dx, 0x1f3
+    out dx, al
+
+    mov cl, 8
+    shr eax, cl
+    mov dx, 0x1f4
+    out dx, al
+
+    shr eax, cl
+    mov dx, 0x1f5
+    out dx, al
+
+    shr eax, cl
+    and al, 0x0f
+    or al, 0xe0
+    mov dx, 0x1f6
+    out dx, al
+
+    mov dx, 0x1f7
+    mov al, 0x20
+    out dx, al
+
+.not_ready:
+    nop
+    in al, dx
+    and al, 0x88
+    cmp al, 0x08
+    jnz .not_ready
+
+    mov ax, di
+    mov dx, 256
+    mul dx
+    mov cx, ax
+    mov dx, 0x1f0
+
+.go_on_read:
+    in ax, dx
+    mov [ebx], ax
+    add ebx, 2
+    loop .go_on_read
+    ret
+
+; 将 kernel.bin 中的 segment 拷贝到编译的地址
+kernel_init:
+    xor eax, eax
+    xor ebx, ebx ; ebx 记录程序头表地址
+    xor ecx, ecx ; cx 记录程序头表中的 program header 数量
+    xor edx, edx ; dx 记录 program header 尺寸，即 e_phentsize
+
+    ; 偏移文件 42 字节处的属性是 e_phentsize, 表示 program header 大小
+    mov dx, [KERNEL_BIN_BASE_ADDR + 42]
+    ; 偏移文件开始部分 20 字节的地方是 e_phoff, 表示第 1 个 program header 在文件中的偏移量
+    mov ebx, [KERNEL_BIN_BASE_ADDR + 28]
+    add ebx, KERNEL_BIN_BASE_ADDR
+    ; 偏移文件开始部分 44 字节的地方是 e_phnum, 表示有几个 program header
+    mov cx, [KERNEL_BIN_BASE_ADDR + 44]
+
+.each_segment:
+    ; 若 p_type 等于 PT_NULL, 说明此 program header 未使用
+    cmp byte [ebx], PT_NULL
+    je .PTNULL
+
+    ; 为函数 memcpy 压入参数，参数是从右往左依次压入
+    ; 函数原型类似于 memcpy(dst, src, size)
+    push dword [ebx + 16]         ; program header 中偏移 16 字节的地方是 p_filesz
+    mov eax, [ebx + 4]            ; program header 中偏移 4 字节的地方是 p_offset
+    add eax, KERNEL_BIN_BASE_ADDR ; eax = 该段的物理地址
+    push eax                      ; 压入 memcpy 的第二个参数 src
+    push dword [ebx + 8]          ; 压入 memcpy 的第一个参数 dst
+                                  ; 偏移程序头 8 字节的位置是 p_vaddr, 这就是目的地址
+    call mem_cpy                  ; 调用 mem_cpy 完成段复制
+    add esp, 12                   ; 清理栈中压入的三个参数
+
+.PTNULL:
+    add ebx, edx                  ; edx 为 program header 大小，即 e_phentsize
+                                  ; ebx = 下一个 program header
+    loop .each_segment
+    ret
+
+; 逐字节拷贝
+; 输入: 栈中三个参数(dst, src, size)
+; 输出: 无
+mem_cpy:
+    cld
+    push ebp
+    mov ebp, esp
+    push ecx            ; rep 指令用到了 ecx
+                        ; 但 ecx 对于外层段的循环还有用，故先入栈备份
+    mov edi, [ebp + 8]  ; dst
+    mov esi, [ebp + 12] ; src
+    mov ecx, [ebp + 16] ; size
+    rep movsb           ; 逐字节拷贝
+
+    ; 恢复环境
+    pop ecx
+    pop ebp
     ret
