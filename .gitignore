@@ -1,3 +1,4 @@
 *.bin
+*.o
 bochs.out
 hd60M.img
