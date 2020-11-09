@@ -3,10 +3,9 @@
 
 %define ZERO push 0
 
-extern put_str
+extern idt_table ; idt_table 是 C 中注册的中断处理程序数组
 
 section .data
-intr_str db "interrupt occur!", 0xa, 0
 global intr_entry_table
 intr_entry_table:
 
@@ -14,22 +13,38 @@ intr_entry_table:
 section .text
 intr%1entry:
     %2
-    push intr_str
-    call put_str
-    add esp, 4    ; 跳过参数 intr_str
+    push ds
+    push es
+    push fs
+    push gs
+    pushad ; 压入 32 位寄存器, 其入栈顺序是: eax, ecx, edx, ebx, esp, ebp, esi, edi
 
     ; 如果是从片上进入的中断，除了往从片上发送 EOI 外, 还要往主片上发送 EOI
     mov al, 0x20 ; 中断结束命令 EOI
     out 0xa0, al ; 向从片发送
     out 0x20, al ; 向主片发送
 
-    add esp, 4   ; 跳过 error_code
-    iret         ; 从中断返回
+    push %1
+    call [idt_table+%1*4] ; 调用 idt_table 中 C 版本中断处理函数
+    jmp intr_exit
 
 section .data
     dd intr%1entry ; 存储各个中断入口程序的地址
                    ; 形成 intr_entry_table 数组
 %endmacro
+
+section .text
+global intr_exit
+intr_exit:
+; 恢复上下文环境
+    add esp, 4 ; 跳过中断号
+    popad
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 4
+    iretd
 
 VECTOR 0x00, ZERO
 VECTOR 0x01, ZERO
