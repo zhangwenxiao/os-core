@@ -2,3 +2,4 @@
 *.o
 bochs.out
 hd60M.img
+build/

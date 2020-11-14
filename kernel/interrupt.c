@@ -2,6 +2,7 @@
 #include "stdint.h"
 #include "global.h"
 #include "io.h"
+#include "print.h"
 
 #define PIC_M_CTRL 0x20 // 可编程中断控制器是 8259A, 主片的控制端口是 0x20
 #define PIC_M_DATA 0x21 // 主片的数据端口是 0x21
@@ -9,6 +10,9 @@
 #define PIC_S_DATA 0xa1 // 从片的数据端口是 0xa1
 
 #define IDT_DESC_CNT 0x21 // 目前总共支持的中断数
+
+#define EFLAGS_IF 0x00000200 // eflags 寄存器中的 if 位为 1
+#define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g"(EFLAG_VAR))
 
 // 中断门描述符结构体
 struct gate_desc {
@@ -104,6 +108,44 @@ static void exception_init(void) {
     intr_name[17] = "#AC Alignment Check Exception";
     intr_name[18] = "#MC Machine-Check Exception";
     intr_name[19] = "#XF SIMD Floating-Point Exception";
+}
+
+// 开中断并返回开中断前的状态
+enum intr_status intr_enable() {
+    enum intr_status old_status;
+    if (INTR_ON == intr_get_status()) {
+        old_status = INTR_ON;
+        return old_status;
+    } else {
+        old_status = INTR_OFF;
+        asm volatile("sti"); // 开中断, sti 指令将 IF 位置 1
+        return old_status;
+    }
+}
+
+// 关中断并返回关中断前的状态
+enum intr_status intr_disable() {
+    enum intr_status old_status;
+    if (INTR_ON == intr_get_status()) {
+        old_status = INTR_ON;
+        asm volatile("cli" : : : "memory"); // 关中断, cli 指令将 IF 位置 0
+        return old_status;
+    } else {
+        old_status = INTR_OFF;
+        return old_status;
+    }
+}
+
+// 将中断状态设置为 status
+enum intr_status intr_set_status(enum intr_status status) {
+    return status & INTR_ON ? intr_enable() : intr_disable();
+}
+
+// 获取当前中断状态
+enum intr_status intr_get_status() {
+    uint32_t eflags = 0;
+    GET_EFLAGS(eflags);
+    return (EFLAGS_IF & eflags) ? INTR_ON : INTR_OFF;
 }
 
 // 完成有关中断的所有初始化工作
