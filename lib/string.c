@@ -37,7 +37,7 @@ int memcmp(const void* a_, const void* b_, uint32_t size) {
 char* strcpy(char* dst_, const char* src_) {
     ASSERT(dst_ != NULL && src_ != NULL);
     char* r = dst_;
-    while((*dst_++ = *src_));
+    while((*dst_++ = *src_++));
     return r;
 }
 
@@ -91,7 +91,7 @@ char* strcat(char* dst_, const char* src_) {
     char* str = dst_;
     while(*str++);
     --str;
-    while((*str++ == *src_++));
+    while((*str++ = *src_++));
     return dst_;
 }
 
