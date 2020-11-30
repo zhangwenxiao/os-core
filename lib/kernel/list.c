@@ -84,7 +84,7 @@ uint32_t list_len(struct list* plist) {
         length++;
         elem = elem->next;
     }
-    return NULL;
+    return length;
 }
 
 // 判断链表是否为空
