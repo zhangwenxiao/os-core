@@ -2,6 +2,7 @@
 #include "print.h"
 #include "interrupt.h"
 #include "io.h"
+#include "ioqueue.h"
 #include "global.h"
 
 #define KBD_BUF_PORT 0x60 // 键盘 buffer 寄存器端口号为 0x60
@@ -31,6 +32,8 @@
 #define ctrl_r_make  	0xe01d
 #define ctrl_r_break 	0xe09d
 #define caps_lock_make 	0x3a
+// 键盘缓冲区
+struct ioqueue kbd_buf;
 // 记录相应键是否按下的状态, ext_scancode用于记录makecode是否以0xe0开头
 static bool ctrl_status, shift_status, alt_status, caps_lock_status, ext_scancode;
 // 以通码 makecode 为索引的二维数组
@@ -132,11 +135,11 @@ static void intr_keyboard_handler(void) {
 
     // 若是任意以下三个键弹起了,将状态置为false
         if (make_code == ctrl_l_make || make_code == ctrl_r_make) {
-        ctrl_status = false;
+            ctrl_status = false;
         } else if (make_code == shift_l_make || make_code == shift_r_make) {
-        shift_status = false;
+            shift_status = false;
         } else if (make_code == alt_l_make || make_code == alt_r_make) {
-        alt_status = false;
+            alt_status = false;
         } // 由于caps_lock不是弹起后关闭,所以需要单独处理
 
         return;   // 直接返回结束此次中断处理程序
@@ -165,16 +168,17 @@ static void intr_keyboard_handler(void) {
                 0x35 字符'/' 
         *******************************/
         if (shift_down_last) {  // 如果同时按下了shift键
-        shift = true;
+            shift = true;
         }
-        } else {	  // 默认为字母键
-        if (shift_down_last && caps_lock_last) {  // 如果shift和capslock同时按下
-        shift = false;
-        } else if (shift_down_last || caps_lock_last) { // 如果shift和capslock任意被按下
-        shift = true;
-        } else {
-        shift = false;
-        }
+        } 
+        else {	  // 默认为字母键
+            if (shift_down_last && caps_lock_last) {  // 如果shift和capslock同时按下
+                shift = false;
+            } else if (shift_down_last || caps_lock_last) { // 如果shift和capslock任意被按下
+                shift = true;
+            } else {
+                shift = false;
+            }
         }
 
         uint8_t index = (scancode &= 0x00ff);  // 将扫描码的高字节置0,主要是针对高字节是e0的扫描码.
@@ -182,21 +186,24 @@ static void intr_keyboard_handler(void) {
 
         // 只处理ascii码不为0的键
         if (cur_char) {
-        put_char(cur_char);
-        return;
+            if(!ioq_full(&kbd_buf)) {
+                put_char(cur_char);
+                ioq_putchar(&kbd_buf, cur_char);
+            }
+            return;
         }
 
         // 记录本次是否按下了下面几类控制键之一,供下次键入时判断组合键
         if (scancode == ctrl_l_make || scancode == ctrl_r_make) {
-        ctrl_status = true;
+            ctrl_status = true;
         } else if (scancode == shift_l_make || scancode == shift_r_make) {
-        shift_status = true;
+            shift_status = true;
         } else if (scancode == alt_l_make || scancode == alt_r_make) {
-        alt_status = true;
+            alt_status = true;
         } else if (scancode == caps_lock_make) {
-        // 不管之前是否有按下caps_lock键,当再次按下时则状态取反,
-        // 即:已经开启时,再按下同样的键是关闭。关闭时按下表示开启
-        caps_lock_status = !caps_lock_status;
+            // 不管之前是否有按下caps_lock键,当再次按下时则状态取反,
+            // 即:已经开启时,再按下同样的键是关闭。关闭时按下表示开启
+            caps_lock_status = !caps_lock_status;
         }
     } else {
         put_str("unknown key\n");
@@ -206,6 +213,7 @@ static void intr_keyboard_handler(void) {
 // 键盘初始化
 void keyboard_init() {
     put_str("keyboard init start\n");
+    ioqueue_init(&kbd_buf);
     register_handler(0x21, intr_keyboard_handler);
     put_str("keyboard init done\n");
 }
