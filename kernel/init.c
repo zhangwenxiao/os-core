@@ -1,3 +1,4 @@
+#include "console.h"
 #include "init.h"
 #include "print.h"
 #include "memory.h"
@@ -12,4 +13,5 @@ void init_all() {
     thread_init(); // 初始化线程相关结构
     mem_init(); // 初始化内存管理系统
     timer_init(); // 初始化 PIT
+    console_init(); // 控制台初始化
 }
