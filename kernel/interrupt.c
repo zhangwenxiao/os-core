@@ -42,11 +42,11 @@ static void pic_init(void) {
     // 初始化从片
     outb(PIC_S_CTRL, 0x11); // ICW1: 边沿触发, 级联 8259, 需要 ICM4
     outb(PIC_S_DATA, 0x28); // ICW2: 起始中断向量号为 0x28
-    outb(PIC_S_DATA, 0x01); // ICW3: 设置从片连接到主片的 IR2 引脚
+    outb(PIC_S_DATA, 0x02); // ICW3: 设置从片连接到主片的 IR2 引脚
     outb(PIC_S_DATA, 0x01); // ICW4: 8086 模式, 正常 EOI
 
-    // 打开键盘和时钟中断, 其它全部关闭
-    outb(PIC_M_DATA, 0xfc);
+    // 打开时钟中断, 其它全部关闭
+    outb(PIC_M_DATA, 0xfe);
     outb(PIC_S_DATA, 0xff);
 
     put_str("pic_init done\n");
@@ -184,5 +184,5 @@ void idt_init() {
     // 加载 idt
     uint64_t idt_operand = ((sizeof(idt) - 1) | ((uint64_t)(uint32_t)idt << 16));
     asm volatile("lidt %0" : : "m" (idt_operand));
-    put_str("idt_init donw\n");
+    put_str("idt_init done\n");
 }

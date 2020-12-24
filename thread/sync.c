@@ -32,7 +32,7 @@ void sema_down(struct semaphore* psema) {
     }
     // 若 value 为 1 或被唤醒后, 会执行下面的代码, 也就是获得了锁
     psema->value--;
-    ASSERT(psema->value==0);
+    ASSERT(psema->value == 0);
     intr_set_status(old_status);
 }
 
