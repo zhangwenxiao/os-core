@@ -1,6 +1,5 @@
 [bits 32]
 %define ERROR_CODE nop
-
 %define ZERO push 0
 
 extern idt_table ; idt_table 是 C 中注册的中断处理程序数组
@@ -94,3 +93,33 @@ VECTOR 0x2c,ZERO	;ps/2鼠标
 VECTOR 0x2d,ZERO	;fpu浮点单元异常
 VECTOR 0x2e,ZERO	;硬盘
 VECTOR 0x2f,ZERO	;保留
+
+; 0x80 号中断
+[bits 32]
+extern syscall_table
+section .text
+global syscall_handler
+syscall_handler:
+; 1. 保存上下文环境
+    push 0  ; 压入 0, 使栈中格式统一
+
+    push ds
+    push es
+    push fs
+    push gs
+    pushad  ; PUSHAD 指令压入 32 位寄存器，其入栈顺序是:
+            ; EAX, ECS, EDX, EBX, ESP, EBP, ESI, EDI
+
+    push 0x80 ; 此位置压入 0x80 也是为了保持统一的栈格式
+; 2. 为系统调用子功能传入参数
+    push edx    ; 系统调用中第 3 个参数
+    push ecx    ; 系统调用中第 2 个参数
+    push ebx    ; 系统调用中第 1 个参数
+
+; 3. 调用子功能处理函数
+    call [syscall_table + eax * 4]
+    add esp, 12 ; 跳过上面的 3 个参数
+
+; 4. 将 call 调用后的返回值存入待当前内核栈中 eax 的位置
+    mov [esp + 8 * 4], eax
+    jmp intr_exit   ; intr_exit 返回, 恢复上下文
