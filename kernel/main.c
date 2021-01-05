@@ -46,12 +46,14 @@ void k_thread_b(void* arg) {
 
 // 测试用户进程
 void u_prog_a(void) {
-    printf(" prog_a_pid:0x%x\n", getpid());
+    char* name = "prog_a";
+    printf(" I am %s, my pid: %d%c", name, getpid(), '\n');
     while(1);
 }
 
 // 测试用户进程
 void u_prog_b(void) {
-    printf(" prog_b_pid:0x%x\n", getpid());
+    char* name = "prog_b";
+    printf(" I am %s, my pid: %d%c", name, getpid(), '\n');
     while(1);
 }
