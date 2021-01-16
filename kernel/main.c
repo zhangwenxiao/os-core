@@ -27,7 +27,7 @@ int main(void) {
 }
 
 /* 在线程中运行的函数 */
-void k_thread_a(void* arg) {
+void k_thread_a(void* arg UNUSED) {
    void* addr1 = sys_malloc(256);
    void* addr2 = sys_malloc(255);
    void* addr3 = sys_malloc(254);
@@ -48,7 +48,7 @@ void k_thread_a(void* arg) {
 }
 
 /* 在线程中运行的函数 */
-void k_thread_b(void* arg) {
+void k_thread_b(void* arg UNUSED) {
    void* addr1 = sys_malloc(256);
    void* addr2 = sys_malloc(255);
    void* addr3 = sys_malloc(254);
