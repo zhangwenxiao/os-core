@@ -1,8 +1,8 @@
 BUILD_DIR = ./build
 ENTRY_POINT = 0xc0001500
 AS = nasm
-CC = gcc
-LD = ld
+CC = x86_64-elf-gcc
+LD = x86_64-elf-ld
 LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog/ -I fs/
 ASFLAGS = -f elf
 CFLAGS = -Wall $(LIB) -m32 -c -fno-builtin -W -Wstrict-prototypes \
@@ -134,22 +134,29 @@ $(BUILD_DIR)/print.o: lib/kernel/print.S
 $(BUILD_DIR)/switch.o: thread/switch.S
 	$(AS) $(ASFLAGS) $< -o $@
 
+$(BUILD_DIR)/mbr.bin: boot/mbr.s
+	$(AS) -I boot/include/  $< -o $@
+$(BUILD_DIR)/loader.bin: boot/loader.s
+	$(AS) -I boot/include/  $< -o $@
+
 # 链接所有目标文件
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-.PHONY: mk_dir hd clean all
+.PHONY: mk_dir hd clean build run all
 
 mk_dir:
 	if [ ! -d $(BUILD_DIR) ]; then mkdir $(BUILD_DIR); fi
 
 hd:
-	dd if=$(BUILD_DIR)/kernel.bin of=hd60M.img bs=512 count=200 seek=9 conv=notrunc
+	dd if=$(BUILD_DIR)/mbr.bin       of=hd60M.img bs=512 count=1          conv=notrunc && \
+	dd if=$(BUILD_DIR)/loader.bin    of=hd60M.img bs=512 count=4   seek=2 conv=notrunc && \
+	dd if=$(BUILD_DIR)/kernel.bin    of=hd60M.img bs=512 count=200 seek=9 conv=notrunc
 
 clean:
 	cd $(BUILD_DIR) && rm -f ./*
 
-build: $(BUILD_DIR)/kernel.bin
+build: $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
 
 run:
 	bochs -f bochsrc.disk

@@ -13,6 +13,7 @@ struct partition {
     char name[8];               // 分区名称
     struct super_block* sb;     // 本分区的超级块
     struct bitmap block_bitmap; // 块位图
+    struct bitmap inode_bitmap; // inode 位图
     struct list open_inodes;    // 本分区打开的 i 结点队列
 };
 

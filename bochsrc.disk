@@ -1,12 +1,14 @@
 # 显示方案
-display_library: sdl
+display_library: sdl2
 
 # 设置 Bochs 在运行过程中能够使用的内存，本例为 32MB
 megs: 32
 
 # 设置对应真实机器的 BIOS 和 VGA BIOS
-romimage: file=/usr/share/bochs/BIOS-bochs-latest
-vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+# romimage: file=/usr/local/Cellar/bochs/2.6.11/share/bochs/BIOS-bochs-latest
+# vgaromimage: file=/usr/local/Cellar/bochs/2.6.11/share/bochs/VGABIOS-lgpl-latest
+romimage: file=$BXSHARE/BIOS-bochs-latest
+vgaromimage: file=/$BXSHARE/VGABIOS-lgpl-latest
 
 # 选择启动盘符
 boot: disk # 从硬盘启动
@@ -16,10 +18,9 @@ log: bochs.out
 
 # 关闭鼠标，打开键盘
 mouse: enabled=0
-keyboard_mapping: enabled=1, map=/usr/share/bochs/keymaps/sdl-pc-us.map
+# keyboard: keymap=/usr/local/Cellar/bochs/2.6.11/share/bochs/keymaps/sdl-pc-us.map
 
 # 硬盘设置
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-ata0-master: type=disk, path="hd60M.img", mode=flat, cylinders=121, heads=16, spt=63
-ata0-slave: type=disk, path="hd80M.img", mode=flat, cylinders=162, heads=16, spt=63
-
+ata0-master: type=disk, path="hd60M.img", mode=flat
+ata0-slave: type=disk, path="hd80M.img", mode=flat
