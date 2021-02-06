@@ -1,14 +1,15 @@
+#include "debug.h"
 #include "file.h"
 #include "fs.h"
-#include "super_block.h"
-#include "inode.h"
-#include "stdio-kernel.h"
-#include "memory.h"
-#include "debug.h"
-#include "interrupt.h"
-#include "string.h"
-#include "thread.h"
 #include "global.h"
+#include "inode.h"
+#include "inode.h"
+#include "interrupt.h"
+#include "memory.h"
+#include "stdio-kernel.h"
+#include "string.h"
+#include "super_block.h"
+#include "thread.h"
 
 // 文件表
 struct file file_table[MAX_FILE_OPEN];

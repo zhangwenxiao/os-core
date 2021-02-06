@@ -96,8 +96,7 @@ static void select_sector(struct disk* hd, uint32_t lba, uint8_t sec_cnt) {
     outb(reg_lba_l(channel), lba);
     outb(reg_lba_m(channel), lba >> 8);
     outb(reg_lba_h(channel), lba >> 16);
-    outb(reg_dev(channel), BIT_DEV_MBS | BIT_DEV_LBA | 
-        (hd->dev_no == 1 ? BIT_DEV_DEV : 0) | lba >> 24);
+    outb(reg_dev(channel), BIT_DEV_MBS | BIT_DEV_LBA | (hd->dev_no == 1 ? BIT_DEV_DEV : 0) | lba >> 24);
 }
 
 // 向通道 channel 发命令 cmd
@@ -190,7 +189,7 @@ void ide_write(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
     select_disk(hd);
 
     uint32_t secs_op; // 每次操作的扇区数
-    uint32_t secs_done; // 已完成的扇区数
+    uint32_t secs_done = 0; // 已完成的扇区数
     while (secs_done < sec_cnt) {
         if ((secs_done + 256) <= sec_cnt) {
             secs_op = 256;
@@ -240,6 +239,7 @@ static void identify_disk(struct disk* hd) {
     if (!busy_wait(hd)) { // 若失败
         char error[64];
         sprintf(error, "%s identify failed!!!!!", hd->name);
+        PANIC(error);
     }
     read_from_sector(hd, id_info, 1);
 
@@ -324,6 +324,7 @@ void ide_init() {
     printk("ide_init start\n");
     uint8_t hd_cnt = *((uint8_t*)(0x475)); // 获取硬盘的数量
     ASSERT(hd_cnt > 0);
+    list_init(&partition_list);
     // 一个 ide 通道上有两个硬盘, 根据硬盘数量反推有几个ide通道
     channel_cnt = DIV_ROUND_UP(hd_cnt, 2); 
     struct ide_channel* channel;

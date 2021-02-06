@@ -5,10 +5,8 @@ display_library: sdl2
 megs: 32
 
 # 设置对应真实机器的 BIOS 和 VGA BIOS
-# romimage: file=/usr/local/Cellar/bochs/2.6.11/share/bochs/BIOS-bochs-latest
-# vgaromimage: file=/usr/local/Cellar/bochs/2.6.11/share/bochs/VGABIOS-lgpl-latest
 romimage: file=$BXSHARE/BIOS-bochs-latest
-vgaromimage: file=/$BXSHARE/VGABIOS-lgpl-latest
+vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 
 # 选择启动盘符
 boot: disk # 从硬盘启动
@@ -18,7 +16,7 @@ log: bochs.out
 
 # 关闭鼠标，打开键盘
 mouse: enabled=0
-# keyboard: keymap=/usr/local/Cellar/bochs/2.6.11/share/bochs/keymaps/sdl-pc-us.map
+# keyboard: keymap=$BXSHARE/keymaps/sdl-pc-us.map
 
 # 硬盘设置
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14

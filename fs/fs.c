@@ -1,15 +1,16 @@
-#include "fs.h"
-#include "super_block.h"
-#include "inode.h"
+#include "debug.h"
 #include "dir.h"
+#include "file.h"
+#include "fs.h"
+#include "global.h"
+#include "ide.h"
+#include "inode.h"
+#include "list.h"
+#include "memory.h"
 #include "stdint.h"
 #include "stdio-kernel.h"
-#include "list.h"
 #include "string.h"
-#include "ide.h"
-#include "global.h"
-#include "debug.h"
-#include "memory.h"
+#include "super_block.h"
 
 struct partition* cur_part; // 默认情况下操作的是哪个分区
 
@@ -45,6 +46,15 @@ static bool mount_partition(struct list_elem* pelem, int arg) {
         cur_part->block_bitmap.btmp_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
         // 从硬盘上读入块位图到分区的 block_bitmap.bits
         ide_read(hd, sb_buf->block_bitmap_lba, cur_part->block_bitmap.bits, sb_buf->block_bitmap_sects);
+
+        // 将硬盘上的 inode 位图读入到内存
+        cur_part->inode_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->inode_bitmap_sects*SECTOR_SIZE);
+        if (cur_part->inode_bitmap.bits == NULL) {
+            PANIC("alloc memory failed!");
+        }
+        cur_part->inode_bitmap.btmp_bytes_len = sb_buf->inode_bitmap_sects*SECTOR_SIZE;
+        // 从硬盘上读入 inode 位图到分区的 inode_bitmap.bits
+        ide_read(hd, sb_buf->inode_bitmap_lba, cur_part->inode_bitmap.bits, sb_buf->inode_bitmap_sects);
 
         list_init(&cur_part->open_inodes);
         printk("mount %s done!\n", part->name);
@@ -274,6 +284,65 @@ static int search_file(const char* pathname, struct path_search_record* searched
     return dir_e.i_no;
 }
 
+// 打开或创建文件成功后, 返回文件描述符, 否则返回 -1
+int32_t sys_open(const char* pathname, uint8_t flags) {
+    // 对目录要用 dir_open, 这里只有 open 文件
+    if (pathname[strlen(pathname) - 1] == '/') {
+        printk("can`t open a directory %s\n", pathname);
+        return -1;
+    }
+    ASSERT(flags <= 7);
+    int32_t fd = -1; // 默认为找不到
+
+    struct path_search_record searched_record;
+    memset(&searched_record, 0, sizeof(struct path_search_record));
+
+    // 记录目录深度, 帮助判断中间某个目录不存在的情况
+    uint32_t pathname_depth = path_depth_cnt((char*)pathname);
+    
+    // 先检查文件是否存在
+    int inode_no = search_file(pathname, &searched_record);
+    bool found = inode_no != -1 ? true : false;
+
+    if (searched_record.file_type == FT_DIRECTORY) {
+        printk("can`t open a directory with open(), use opendir() to instead\n");
+        dir_close(searched_record.parent_dir);
+        return -1;
+    }
+
+    uint32_t path_searched_depth = path_depth_cnt(searched_record.searched_path);
+
+    // 先判断是否把 pathname 的各层目录都访问到了, 即是否在某个中间目录就失败了
+    if (pathname_depth != path_searched_depth) {
+        printk("cannot access %s: Not a directory, subpath %s is`t exist\n", pathname, searched_record.searched_path);
+        dir_close(searched_record.parent_dir);
+        return -1;
+    }
+
+    // 若是在最后一个路径上没找到, 并且并不是要创建文件, 直接返回 -1
+    if (!found && !(flags & O_CREAT)) {
+        printk("in path %s, file %s is`t exist\n", searched_record.searched_path, (strrchr(searched_record.searched_path, '/') + 1));
+        dir_close(searched_record.parent_dir);
+        return -1;
+    } else if (found && flags & O_CREAT) { // 若要创建的文件已存在
+        printk("%s has already exist!\n", pathname);
+        dir_close(searched_record.parent_dir);
+        return -1;
+    }
+
+    switch (flags & O_CREAT) {
+        case O_CREAT:
+            printk("creating file\n");
+            fd = file_create(searched_record.parent_dir, (strrchr(pathname, '/') + 1), flags);
+            dir_close(searched_record.parent_dir);
+        // 其余为打开文件
+    }
+
+    // 此 fd 是指任务 pcb->fd_table 数组中的元素下标
+    // 并不是指全局 file_table 中的下标
+    return fd;
+}
+
 // 在磁盘上搜索文件系统, 若没有则格式化分区创建文件系统
 void filesys_init() {
     uint8_t channel_no = 0, dev_no, part_idx = 0;
@@ -324,4 +393,13 @@ void filesys_init() {
     char default_part[8] = "sdb1";
     // 挂载分区
     list_traversal(&partition_list, mount_partition, (int)default_part);
+
+    // 将当前分区的根目录打开
+    open_root_dir(cur_part);
+
+    // 初始化文件表
+    uint32_t fd_idx = 0;
+    while (fd_idx < MAX_FILE_OPEN) {
+        file_table[fd_idx++].fd_inode = NULL;
+    }
 }
