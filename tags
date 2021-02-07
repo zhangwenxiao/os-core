@@ -387,6 +387,7 @@ file_open	fs/file.c	/^int32_t file_open(uint32_t inode_no, uint8_t flag) {$/;"	f
 file_table	fs/file.c	/^struct file file_table[MAX_FILE_OPEN];$/;"	v	typeref:struct:file
 file_type	fs/fs.h	/^    enum file_types file_type; \/\/ 文件类型$/;"	m	struct:path_search_record	typeref:enum:path_search_record::file_types
 file_types	fs/fs.h	/^enum file_types {$/;"	g
+file_write	fs/file.c	/^int32_t file_write(struct file* file, const void* buf, uint32_t count) {$/;"	f
 filename	fs/dir.h	/^    char filename[MAX_FILE_NAME_LEN]; \/\/ 普通文件或目录名称$/;"	m	struct:dir_entry
 filesys_init	fs/fs.c	/^void filesys_init() {$/;"	f
 free	lib/user/syscall.c	/^void free(void* ptr) {$/;"	f

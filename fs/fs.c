@@ -365,6 +365,29 @@ int32_t sys_close(int32_t fd) {
     return ret;
 }
 
+// 将 buf 中连续 count 个字节写入文件描述符 fd, 成功则返回写入的字节数, 失败返回 -1
+int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {
+    if (fd < 0) {
+        printk("sys_write: fd error\n");
+        return -1;
+    }
+    if (fd == stdout_no) {
+        char tmp_buf[1024] = {0};
+        memcpy(tmp_buf, buf, count);
+        console_put_str(tmp_buf);
+        return count;
+    }
+    uint32_t _fd = fd_local2global(fd);
+    struct file* wr_file = &file_table[_fd];
+    if (wr_file->fd_flag & O_WRONLY || wr_file->fd_flag & O_RDWR) {
+        uint32_t bytes_written = file_write(wr_file, buf, count);
+        return bytes_written;
+    } else {
+        console_put_str("sys_write: not allowed to write file without flag O_RDWR or O_WRONLY\n");
+        return -1;
+    }
+}
+
 // 在磁盘上搜索文件系统, 若没有则格式化分区创建文件系统
 void filesys_init() {
     uint8_t channel_no = 0, dev_no, part_idx = 0;
