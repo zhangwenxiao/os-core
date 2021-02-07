@@ -377,10 +377,13 @@ f_type	fs/dir.h	/^    enum file_types f_type; \/\/ 文件类型$/;"	m	struct:dir
 false	kernel/global.h	/^#define false /;"	d
 fd_flag	fs/file.h	/^    uint32_t fd_flag;$/;"	m	struct:file
 fd_inode	fs/file.h	/^    struct inode* fd_inode;$/;"	m	struct:file	typeref:struct:file::inode
+fd_local2global	fs/fs.c	/^static uint32_t fd_local2global(uint32_t local_fd) {$/;"	f	file:
 fd_pos	fs/file.h	/^    uint32_t fd_pos; \/\/ 记录当前文件操作的偏移地址, 以 0 为起始, 最大为文件大小 - 1$/;"	m	struct:file
 fd_table	thread/thread.h	/^    int32_t fd_table[MAX_FILES_OPEN_PER_PROC]; \/\/ 文件描述符数组$/;"	m	struct:task_struct
 file	fs/file.h	/^struct file {$/;"	s
+file_close	fs/file.c	/^int32_t file_close(struct file* file) {$/;"	f
 file_create	fs/file.c	/^int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flag) {$/;"	f
+file_open	fs/file.c	/^int32_t file_open(uint32_t inode_no, uint8_t flag) {$/;"	f
 file_table	fs/file.c	/^struct file file_table[MAX_FILE_OPEN];$/;"	v	typeref:struct:file
 file_type	fs/fs.h	/^    enum file_types file_type; \/\/ 文件类型$/;"	m	struct:path_search_record	typeref:enum:path_search_record::file_types
 file_types	fs/fs.h	/^enum file_types {$/;"	g
@@ -687,6 +690,7 @@ super_block	fs/super_block.h	/^struct super_block {$/;"	s
 swap_pairs_bytes	device/ide.c	/^static void swap_pairs_bytes(const char* dst, char* buf, uint32_t len) {$/;"	f	file:
 switch_to	thread/switch.S	/^switch_to:$/;"	l
 sync_dir_entry	fs/dir.c	/^bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf) {$/;"	f
+sys_close	fs/fs.c	/^int32_t sys_close(int32_t fd) {$/;"	f
 sys_free	kernel/memory.c	/^void sys_free(void* ptr) {$/;"	f
 sys_getpid	userprog/syscall-init.c	/^uint32_t sys_getpid(void) {$/;"	f
 sys_malloc	kernel/memory.c	/^void* sys_malloc(uint32_t size) {$/;"	f
