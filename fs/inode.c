@@ -150,6 +150,83 @@ void inode_close(struct inode* inode) {
     intr_set_status(old_status);
 }
 
+// 将硬盘分区 part 上的 inode 清空
+void inode_delete(struct partition* part, uint32_t inode_no, void* io_buf) {
+    ASSERT(inode_no < 4096);
+    struct inode_position inode_pos;
+    inode_locate(part, inode_no, &inode_pos); // inode 位置信息会存入 inode_pos
+    ASSERT(inode_pos.sec_lba <= (part->start_lba + part->sec_cnt));
+
+    char* inode_buf = (char*)io_buf;
+    if (inode_pos.two_sec) { // inode 跨扇区, 读入 2 个扇区
+        // 将原硬盘上的内容先读出来
+        ide_read(part->my_disk, inode_pos.sec_lba, inode_buf, 2);
+        // 将 inode_buf 清 0
+        memset((inode_buf + inode_pos.off_size), 0, sizeof(struct inode));
+        // 用清 0 的内存数据覆盖磁盘
+        ide_write(part->my_disk, inode_pos.sec_lba, inode_buf, 2);
+    } else { // 未跨扇区, 只读入 1 个扇区就好
+        // 将原硬盘上的内容先读出来
+        ide_read(part->my_disk, inode_pos.sec_lba, inode_buf, 1);
+        // 将 inode_buf 清 0
+        memset((inode_buf + inode_pos.off_size), 0, sizeof(struct inode));
+        // 用清 0 的内存数据覆盖磁盘
+        ide_write(part->my_disk, inode_pos.sec_lba, inode_buf, 1);
+    }
+}
+
+// 回收 inode 的数据块和 inode 本身
+void inode_release(struct partition* part, uint32_t inode_no) {
+    struct inode* inode_to_del = inode_open(part, inode_no);
+    ASSERT(inode_to_del->i_no == inode_no);
+
+// 1 回收 inode 占用的所有块
+    uint8_t block_idx = 0, block_cnt = 12;
+    uint32_t block_bitmap_idx;
+    uint32_t all_blocks[140] = {0}; // 12 个直接块 + 128 个间接块
+
+    // a 先将前 12 个直接块存入 all_blocks
+    while (block_idx < 12) {
+        all_blocks[block_idx] = inode_to_del->i_sectors[block_idx];
+        block_idx++;
+    }
+
+    // b 如果一级间接块表存在, 将其 128 个间接块读到 all_blocks[12~], 并释放一级间接块表所占的扇区
+    if (inode_to_del->i_sectors[12] != 0) {
+        ide_read(part->my_disk, inode_to_del->i_sectors[12], all_blocks+12, 1);
+        block_cnt = 140;
+
+        // 回收一级间接块表占用的扇区
+        block_bitmap_idx = inode_to_del->i_sectors[12] - part->sb->data_start_lba;
+        ASSERT(block_bitmap_idx > 0);
+        bitmap_set(&part->block_bitmap, block_bitmap_idx, 0);
+        bitmap_sync(cur_part, block_bitmap_idx, BLOCK_BITMAP);
+    }
+
+    // c inode 所有的块地址已经收集到 all_blocks 中, 下面逐个回收
+    block_idx = 0;
+    while (block_idx < block_cnt) {
+        if (all_blocks[block_idx] != 0) {
+            block_bitmap_idx = 0;
+            block_bitmap_idx = all_blocks[block_idx] - part->sb->data_start_lba;
+            ASSERT(block_bitmap_idx > 0);
+            bitmap_set(&part->block_bitmap, block_bitmap_idx, 0);
+            bitmap_sync(cur_part, block_bitmap_idx, BLOCK_BITMAP);
+        }
+        block_idx++;
+    }
+
+// 2 回收该 inode 所占用的 inode
+    bitmap_set(&part->inode_bitmap, inode_no, 0);
+    bitmap_sync(cur_part, inode_no, INODE_BITMAP);
+
+    void* io_buf = sys_malloc(1024);
+    inode_delete(part, inode_no, io_buf);
+    sys_free(io_buf);
+
+    inode_close(inode_to_del);
+}
+
 // 初始化 new_inode
 void inode_init(uint32_t inode_no, struct inode* new_inode) {
     new_inode->i_no = inode_no;
