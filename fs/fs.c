@@ -400,6 +400,37 @@ int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
     return file_read(&file_table[_fd], buf, count);
 }
 
+// 重置用于文件读写操作的偏移指针, 成功时返回新的偏移量, 出错时返回 -1
+int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence) {
+    if (fd < 0) {
+        printk("sys_lseek: fd error\n");
+        return -1;
+    }
+    ASSERT(whence > 0 && whence < 4);
+    uint32_t _fd = fd_local2global(fd);
+    struct file* pf = &file_table[_fd];
+    int32_t new_pos = 0; // 新的偏移量必须位于文件大小之内
+    int32_t file_size = (int32_t)pf->fd_inode->i_size;
+    switch (whence) {
+        // SEEK_SET 新的读写位置是相对于文件开头再增加 offset 个位移量
+        case SEEK_SET:
+            new_pos = offset;
+            break;
+        // SEEK_CUR 新的读写位置是相对于当前的位置增加 offset 个位移量
+        case SEEK_CUR:
+            new_pos = (int32_t)pf->fd_pos + offset;
+            break;
+        // SEEK_END 新的读写位置是相对于文件尺寸再增加 offset 个位移量
+        case SEEK_END:
+            new_pos = file_size + offset;
+    }
+    if (new_pos < 0 || new_pos > (file_size - 1)) {
+        return -1;
+    }
+    pf->fd_pos = new_pos;
+    return pf->fd_pos;
+}
+
 // 在磁盘上搜索文件系统, 若没有则格式化分区创建文件系统
 void filesys_init() {
     uint8_t channel_no = 0, dev_no, part_idx = 0;
