@@ -633,6 +633,17 @@ int32_t sys_closedir(struct dir* dir) {
     return ret;
 }
 
+// 读取目录 dir 的 1 个目录项, 成功后返回其目录项地址, 到目录尾时或出错时返回 NULL
+struct dir_entry* sys_readdir(struct dir* dir) {
+    ASSERT(dir != NULL);
+    return dir_read(dir);
+}
+
+// 把目录 dir 的指针 dir_pos 置 0
+void sys_rewinddir(struct dir* dir) {
+    dir->dir_pos = 0;
+}
+
 // 在磁盘上搜索文件系统, 若没有则格式化分区创建文件系统
 void filesys_init() {
     uint8_t channel_no = 0, dev_no, part_idx = 0;
