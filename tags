@@ -91,6 +91,7 @@ MAX_FILE_OPEN	fs/file.h	/^#define MAX_FILE_OPEN /;"	d
 MAX_PATH_LEN	fs/fs.h	/^#define MAX_PATH_LEN /;"	d
 MEM_BITMAP_BASE	kernel/memory.c	/^#define MEM_BITMAP_BASE /;"	d	file:
 NULL	kernel/global.h	/^#define NULL /;"	d
+NULL	lib/user/assert.h	/^#define NULL /;"	d
 OBJS	makefile	/^OBJS = $(BUILD_DIR)\/main.o $(BUILD_DIR)\/init.o $(BUILD_DIR)\/interrupt.o \\$/;"	m
 O_CREAT	fs/fs.h	/^    O_CREAT = 4 \/\/ 创建$/;"	e	enum:oflags
 O_RDONLY	fs/fs.h	/^    O_RDONLY,   \/\/ 只读$/;"	e	enum:oflags
@@ -234,6 +235,7 @@ __LIB_KERNEL_STDIOSYS_H	lib/kernel/stdio-kernel.h	/^#define __LIB_KERNEL_STDIOSY
 __LIB_STDINT_H	lib/stdint.h	/^#define __LIB_STDINT_H$/;"	d
 __LIB_STDIO_H	lib/stdio.h	/^#define __LIB_STDIO_H$/;"	d
 __LIB_STRING_H	lib/string.h	/^#define __LIB_STRING_H$/;"	d
+__LIB_USER_ASSERT_H	lib/user/assert.h	/^#define __LIB_USER_ASSERT_H$/;"	d
 __LIB_USER_SYSCALL_H	lib/user/syscall.h	/^#define __LIB_USER_SYSCALL_H$/;"	d
 __THREAD_SYNC_H	thread/sync.h	/^#define __THREAD_SYNC_H$/;"	d
 __THREAD_THREAD_H	thread/thread.h	/^#define __THREAD_THREAD_H$/;"	d
@@ -258,6 +260,7 @@ ards_buf	boot/loader.S	/^ards_buf times 244 db 0$/;"	l
 ards_nr	boot/loader.S	/^ards_nr dw 0 ; ards_nr 用于记录 ARDS 结构体数量$/;"	d
 arena	kernel/memory.c	/^struct arena {$/;"	s	file:
 arena2block	kernel/memory.c	/^static struct mem_block* arena2block(struct arena* a, uint32_t idx) {$/;"	f	file:
+assert	lib/user/assert.h	/^   #define assert(/;"	d
 attr_low_byte	kernel/global.h	/^   uint8_t  attr_low_byte;$/;"	m	struct:gdt_desc
 attribute	kernel/interrupt.c	/^    uint8_t  attribute;$/;"	m	struct:gate_desc	file:
 backlink	userprog/tss.c	/^    uint32_t backlink;$/;"	m	struct:tss	file:
@@ -603,6 +606,7 @@ page_dir_activate	userprog/process.c	/^void page_dir_activate(struct task_struct
 page_table_add	kernel/memory.c	/^static void page_table_add(void* _vaddr, void* _page_phyaddr) {$/;"	f	file:
 page_table_pte_remove	kernel/memory.c	/^static void page_table_pte_remove(uint32_t vaddr) {$/;"	f	file:
 palloc	kernel/memory.c	/^static void* palloc(struct pool* m_pool) {$/;"	f	file:
+panic	lib/user/assert.h	/^#define panic(/;"	d
 panic_spin	kernel/debug.c	/^void panic_spin(char* filename, $/;"	f
 parent_dir	fs/fs.h	/^    struct dir* parent_dir; \/\/ 文件或目录所在的直接父目录$/;"	m	struct:path_search_record	typeref:struct:path_search_record::dir
 parent_pid	thread/thread.h	/^    int16_t parent_pid; \/\/ 父进程 pid$/;"	m	struct:task_struct
@@ -745,6 +749,7 @@ sys_malloc	kernel/memory.c	/^void* sys_malloc(uint32_t size) {$/;"	f
 sys_mkdir	fs/fs.c	/^int32_t sys_mkdir(const char* pathname) {$/;"	f
 sys_open	fs/fs.c	/^int32_t sys_open(const char* pathname, uint8_t flags) {$/;"	f
 sys_opendir	fs/fs.c	/^struct dir* sys_opendir(const char* name) {$/;"	f
+sys_putchar	fs/fs.c	/^void sys_putchar(char char_asci) {$/;"	f
 sys_read	fs/fs.c	/^int32_t sys_read(int32_t fd, void* buf, uint32_t count) {$/;"	f
 sys_readdir	fs/fs.c	/^struct dir_entry* sys_readdir(struct dir* dir) {$/;"	f
 sys_rewinddir	fs/fs.c	/^void sys_rewinddir(struct dir* dir) {$/;"	f
@@ -795,6 +800,7 @@ unused_retaddr	thread/thread.h	/^    void (*unused_retaddr);$/;"	m	struct:thread
 update_inode_open_cnts	userprog/fork.c	/^static void update_inode_open_cnts(struct task_struct* thread) {$/;"	f	file:
 update_tss_esp	userprog/tss.c	/^void update_tss_esp(struct task_struct* pthread) {$/;"	f
 user_pool	kernel/memory.c	/^struct pool kernel_pool, user_pool;$/;"	v	typeref:struct:
+user_spin	lib/user/assert.c	/^void user_spin(char* filename, int line, const char* func, const char* condition) {$/;"	f
 userprog_vaddr	thread/thread.h	/^    struct virtual_addr userprog_vaddr; \/\/ 用户进程的虚拟地址$/;"	m	struct:task_struct	typeref:struct:task_struct::virtual_addr
 va_arg	lib/stdio.c	/^#define va_arg(/;"	d	file:
 va_end	lib/kernel/stdio-kernel.c	/^#define va_end(/;"	d	file:
