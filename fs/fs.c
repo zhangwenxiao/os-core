@@ -1,19 +1,19 @@
-#include "fs.h"
+#include "console.h"
 #include "debug.h"
 #include "dir.h"
 #include "file.h"
+#include "fs.h"
 #include "global.h"
 #include "ide.h"
 #include "inode.h"
+#include "ioqueue.h"
+#include "keyboard.h"
 #include "list.h"
 #include "memory.h"
 #include "stdint.h"
 #include "stdio-kernel.h"
 #include "string.h"
 #include "super_block.h"
-#include "console.h"
-#include "keyboard.h"
-#include "ioqueue.h"
 
 struct partition* cur_part; // 默认情况下操作的是哪个分区
 
@@ -106,17 +106,7 @@ static void partition_format(struct partition* part) {
     sb.dir_entry_size = sizeof(struct dir_entry);
 
     printk("%s info:\n", part->name);
-    printk("   magic:0x%x\n", sb.magic);
-    printk("   part_lba_base:0x%x\n", sb.part_lba_base);
-    printk("   all_sectors:0x%x\n", sb.sec_cnt);
-    printk("   inode_cnt:0x%x\n", sb.inode_cnt);
-    printk("   block_bitmap_lba:0x%x\n", sb.block_bitmap_lba);
-    printk("   block_bitmap_sectors:0x%x\n", sb.block_bitmap_sects);
-    printk("   inode_bitmap_lba:0x%x\n", sb.inode_bitmap_lba);
-    printk("   inode_bitmap_sectors:0x%x\n", sb.inode_bitmap_sects);
-    printk("   inode_table_lba:0x%x\n", sb.inode_table_lba);
-    printk("   inode_table_sectors:0x%x\n", sb.inode_table_sects);
-    printk("   data_start_lba:0x%x\n", sb.data_start_lba);
+    printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   inode_table_sectors:0x%x\n   data_start_lba:0x%x\n", sb.magic, sb.part_lba_base, sb.sec_cnt, sb.inode_cnt, sb.block_bitmap_lba, sb.block_bitmap_sects, sb.inode_bitmap_lba, sb.inode_bitmap_sects, sb.inode_table_lba, sb.inode_table_sects, sb.data_start_lba);
 
     struct disk* hd = part->my_disk;
 // 1 将超级块写入本分区的 1 扇区
@@ -182,7 +172,7 @@ static void partition_format(struct partition* part) {
 }
 
 // 将最上层路径名称解析出来
-static char* path_parse(char* pathname, char* name_store) {
+char* path_parse(char* pathname, char* name_store) {
     // 根目录不需要单独解析
     if (pathname[0] == '/') {
         // 路径中出现 1 个或多个连续的字符 '/', 将这些 '/' 跳过
@@ -760,6 +750,7 @@ char* sys_getcwd(char* buf, uint32_t size) {
     if (child_inode_nr == 0) {
         buf[0] = '/';
         buf[1] = 0;
+        sys_free(io_buf);
         return buf;
     }
 
