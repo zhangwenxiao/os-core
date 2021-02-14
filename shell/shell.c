@@ -112,11 +112,9 @@ static int32_t cmd_parse(char* cmd_str, char** argv, char token) {
 
 char* argv[MAX_ARG_NR]; // argv 必须为全局变量, 为了以后 exec 的程序可访问参数
 int32_t argc = -1;
-
 // 简单的 shell
 void my_shell(void) {
     cwd_cache[0] = '/';
-    cwd_cache[1] = 0;
     while (1) {
         print_prompt();
         memset(final_path, 0, MAX_PATH_LEN);
@@ -133,12 +131,27 @@ void my_shell(void) {
             continue;
         }
 
-        char buf[MAX_PATH_LEN] = {0};
-        int32_t arg_idx = 0;
-        while (arg_idx < argc) {
-            make_clear_abs_path(argv[arg_idx], buf);
-            printf("%s -> %s\n", argv[arg_idx], buf);
-            arg_idx++;
+        if (!strcmp("ls", argv[0])) {
+            buildin_ls(argc, argv);
+        } else if (!strcmp("cd", argv[0])) {
+            if (buildin_cd(argc, argv) != NULL) {
+                memset(cwd_cache, 0, MAX_PATH_LEN);
+                strcpy(cwd_cache, final_path);
+            }
+        } else if (!strcmp("pwd", argv[0])) {
+            buildin_pwd(argc, argv);
+        } else if (!strcmp("ps", argv[0])) {
+            buildin_ps(argc, argv);
+        } else if (!strcmp("clear", argv[0])) {
+            buildin_clear(argc, argv);
+        } else if (!strcmp("mkdir", argv[0])){
+            buildin_mkdir(argc, argv);
+        } else if (!strcmp("rmdir", argv[0])){
+            buildin_rmdir(argc, argv);
+        } else if (!strcmp("rm", argv[0])) {
+            buildin_rm(argc, argv);
+        } else {
+            printf("external command\n");
         }
     }
     panic("my_shell: should not be here");
