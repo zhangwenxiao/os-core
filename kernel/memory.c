@@ -197,7 +197,7 @@ void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
     if(cur->pgdir != NULL && pf == PF_USER) {
         // 若当前是用户进程申请用户内存, 就修改用户进程自己的虚拟地址位图
         bit_idx = (vaddr - cur->userprog_vaddr.vaddr_start) / PG_SIZE;
-        ASSERT(bit_idx > 0);
+        ASSERT(bit_idx >= 0);
         bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx, 1);
     } else if(cur->pgdir == NULL && pf == PF_KERNEL) {
         // 如果是内核线程申请内核内存, 就修改 kernel_vaddr

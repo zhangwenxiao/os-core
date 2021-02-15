@@ -1,13 +1,16 @@
+#include "assert.h"
+#include "buildin_cmd.h"
+#include "file.h"
+#include "fs.h"
+#include "global.h"
+#include "ide.h"
+#include "print.h"
 #include "shell.h"
 #include "stdint.h"
-#include "fs.h"
-#include "file.h"
-#include "syscall.h"
+#include "stdio-kernel.h"
 #include "stdio.h"
-#include "global.h"
-#include "assert.h"
 #include "string.h"
-#include "buildin_cmd.h"
+#include "syscall.h"
 
 #define MAX_ARG_NR 16 // 加上命令名外, 最多支持 15 个参数
 
@@ -150,8 +153,28 @@ void my_shell(void) {
             buildin_rmdir(argc, argv);
         } else if (!strcmp("rm", argv[0])) {
             buildin_rm(argc, argv);
-        } else {
-            printf("external command\n");
+        } else { // 外部命令需要从磁盘上加载
+            int32_t pid = fork();
+            if (pid) { // 父进程
+                while(1);
+            } else { // 子进程
+                make_clear_abs_path(argv[0], final_path);
+                argv[0] = final_path;
+                // 先判断下文件是否存在
+                struct stat file_stat;
+                memset(&file_stat, 0, sizeof(struct stat));
+                if (stat(argv[0], &file_stat) == -1) {
+                    printf("my_shell: cannot access %s: No such file or directory\n", argv[0]);
+                } else {
+                    execv(argv[0], argv);
+                }
+                while(1);
+            }
+        }
+        int32_t arg_idx = 0;
+        while (arg_idx < MAX_ARG_NR) {
+            argv[arg_idx] = NULL;
+            arg_idx++;
         }
     }
     panic("my_shell: should not be here");
