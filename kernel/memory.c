@@ -523,6 +523,20 @@ void* get_a_page_without_opvaddrbitmap(enum pool_flags pf, uint32_t vaddr) {
     return (void*)vaddr;
 }
 
+// 根据物理页框地址 pg_phy_addr 在相应的内存池的位图清 0, 不改动页表
+void free_a_phy_page(uint32_t pg_phy_addr) {
+    struct pool* mem_pool;
+    uint32_t bit_idx = 0;
+    if (pg_phy_addr >= user_pool.phy_addr_start) {
+        mem_pool = &user_pool;
+        bit_idx = (pg_phy_addr - user_pool.phy_addr_start) / PG_SIZE;
+    } else {
+        mem_pool = &kernel_pool;
+        bit_idx = (pg_phy_addr - kernel_pool.phy_addr_start) / PG_SIZE;
+    }
+    bitmap_set(&mem_pool->pool_bitmap, bit_idx, 0);
+}
+
 // 内存管理初始化入口
 void mem_init() {
     put_str("mem_init start\n");
@@ -533,11 +547,3 @@ void mem_init() {
     block_desc_init(k_block_descs);
     put_str("mem_init done\n");
 }
-
-
-
-
-
-
-
-

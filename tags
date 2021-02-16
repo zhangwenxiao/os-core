@@ -274,6 +274,8 @@ __USERPROG_FORK_H	userprog/fork.h	/^#define __USERPROG_FORK_H$/;"	d
 __USERPROG_PROCESS_H	userprog/process.h	/^#define __USERPROG_PROCESS_H$/;"	d
 __USERPROG_SYSCALLINIT_H	userprog/syscall-init.h	/^#define __USERPROG_SYSCALLINIT_H$/;"	d
 __USERPROG_TSS_H	userprog/tss.h	/^#define __USERPROG_TSS_H$/;"	d
+__USERPROG_WAITEXIT_H	userprog/wait_exit.h	/^#define __USERPROG_WAITEXIT_H$/;"	d
+_start	command/start.S	/^_start:$/;"	l
 _syscall0	lib/user/syscall.c	/^#define _syscall0(/;"	d	file:
 _syscall1	lib/user/syscall.c	/^#define _syscall1(/;"	d	file:
 _syscall2	lib/user/syscall.c	/^#define _syscall2(/;"	d	file:
@@ -455,9 +457,11 @@ esp2	userprog/tss.c	/^    uint32_t* esp2;$/;"	m	struct:tss	file:
 esp_dummy	thread/thread.h	/^    uint32_t esp_dummy;	 \/\/ 虽然pushad把esp也压入,但esp是不断变化的,所以会被popad忽略$/;"	m	struct:intr_stack
 exception_init	kernel/interrupt.c	/^static void exception_init(void) {$/;"	f	file:
 execv	lib/user/syscall.c	/^int execv(const char* pathname, char** argv) {$/;"	f
+exit_status	thread/thread.h	/^    int8_t exit_status; \/\/ 进程结束时自己调用 exit 传入的参数$/;"	m	struct:task_struct
 expecting_intr	device/ide.h	/^    bool expecting_intr;        \/\/ 表示等待硬盘的中断$/;"	m	struct:ide_channel
 ext_lba_base	device/ide.c	/^int32_t ext_lba_base = 0;$/;"	v
 ext_scancode	device/keyboard.c	/^static bool ctrl_status, shift_status, alt_status, caps_lock_status, ext_scancode;$/;"	v	file:
+extern	command/start.S	/^extern main$/;"	l
 extern	kernel/kernel.S	/^extern idt_table ; idt_table 是 C 中注册的中断处理程序数组$/;"	l
 extern	kernel/kernel.S	/^extern syscall_table$/;"	l
 f_type	fs/dir.h	/^    enum file_types f_type; \/\/ 文件类型$/;"	m	struct:dir_entry	typeref:enum:dir_entry::file_types
@@ -479,9 +483,12 @@ file_write	fs/file.c	/^int32_t file_write(struct file* file, const void* buf, ui
 filename	fs/dir.h	/^    char filename[MAX_FILE_NAME_LEN]; \/\/ 普通文件或目录名称$/;"	m	struct:dir_entry
 filesys_init	fs/fs.c	/^void filesys_init() {$/;"	f
 final_path	shell/shell.c	/^char final_path[MAX_PATH_LEN] = {0}; \/\/ 用于洗路径时的缓冲$/;"	v
+find_child	userprog/wait_exit.c	/^static bool find_child(struct list_elem* pelem, int32_t ppid) {$/;"	f	file:
+find_hanging_child	userprog/wait_exit.c	/^static bool find_hanging_child(struct list_elem* pelem, int32_t ppid) {$/;"	f	file:
 fork	lib/user/syscall.c	/^pid_t fork(void) {$/;"	f
 fork_pid	thread/thread.c	/^pid_t fork_pid(void) {$/;"	f
 free	lib/user/syscall.c	/^void free(void* ptr) {$/;"	f
+free_a_phy_page	kernel/memory.c	/^void free_a_phy_page(uint32_t pg_phy_addr) {$/;"	f
 free_elem	kernel/memory.h	/^    struct list_elem free_elem;$/;"	m	struct:mem_block	typeref:struct:mem_block::list_elem
 free_list	kernel/memory.h	/^    struct list free_list; \/\/ 目前可用的 mem_block 链表$/;"	m	struct:mem_block_desc	typeref:struct:mem_block_desc::list
 frequency_set	device/timer.c	/^static void frequency_set(uint8_t counter_port, \\$/;"	f	file:
@@ -507,6 +514,7 @@ get_parent_dir_inode_nr	fs/fs.c	/^static uint32_t get_parent_dir_inode_nr(uint32
 get_user_pages	kernel/memory.c	/^void* get_user_pages(uint32_t pg_cnt) {$/;"	f
 getcwd	lib/user/syscall.c	/^char* getcwd(char* buf, uint32_t size) {$/;"	f
 getpid	lib/user/syscall.c	/^uint32_t getpid() {$/;"	f
+global	command/start.S	/^global _start ; _start 是链接器默认的入口符号$/;"	l
 global	kernel/kernel.S	/^global intr_entry_table$/;"	l
 global	kernel/kernel.S	/^global intr_exit$/;"	l
 global	kernel/kernel.S	/^global syscall_handler$/;"	l
@@ -540,6 +548,7 @@ idt_init	kernel/interrupt.c	/^void idt_init() {$/;"	f
 idt_table	kernel/interrupt.c	/^intr_handler idt_table[IDT_DESC_CNT]; \/\/ 定义中断处理程序数组$/;"	v
 inb	lib/kernel/io.h	/^static inline uint8_t inb(uint16_t port) {$/;"	f
 init	kernel/main.c	/^void init(void) {$/;"	f
+init_adopt_a_child	userprog/wait_exit.c	/^static bool init_adopt_a_child(struct list_elem* pelem, int32_t pid) {$/;"	f	file:
 init_all	kernel/init.c	/^void init_all() {$/;"	f
 init_thread	thread/thread.c	/^void init_thread(struct task_struct* pthread, char* name, int prio) {$/;"	f
 inode	fs/dir.h	/^    struct inode* inode;$/;"	m	struct:dir	typeref:struct:dir::inode
@@ -624,6 +633,7 @@ lock_release	thread/sync.c	/^void lock_release(struct lock* plock) {$/;"	f
 logic_parts	device/ide.h	/^    struct partition logic_parts[8]; \/\/ 逻辑分区数量无限, 本内核支持 8 个$/;"	m	struct:disk	typeref:struct:disk::partition
 lseek	lib/user/syscall.c	/^int32_t lseek(int32_t fd, int32_t offset, uint8_t whence) {$/;"	f
 magic	fs/super_block.h	/^    uint32_t magic;         \/\/ 用来标识文件系统类型$/;"	m	struct:super_block
+main	command/prog_arg.c	/^int main(int argc, char** argv) {$/;"	f
 main	command/prog_no_arg.c	/^int main(void) {$/;"	f
 main	kernel/main.c	/^int main(void) {$/;"	f
 main_thread	thread/thread.c	/^struct task_struct* main_thread;        \/\/ 主线程 PCB$/;"	v	typeref:struct:task_struct
@@ -707,7 +717,15 @@ pgdir	thread/thread.h	/^    uint32_t* pgdir; \/\/ 进程自己页表的虚拟地
 phy_addr_start	kernel/memory.c	/^    uint32_t phy_addr_start; \/\/ 本内存池所管理物理内存的起始地址$/;"	m	struct:pool	file:
 pic_init	kernel/interrupt.c	/^static void pic_init(void) {$/;"	f	file:
 pid	thread/thread.h	/^    pid_t pid;$/;"	m	struct:task_struct
-pid_lock	thread/thread.c	/^struct lock pid_lock;                   \/\/ 分配 pid 锁$/;"	v	typeref:struct:lock
+pid2thread	thread/thread.c	/^struct task_struct* pid2thread(int32_t pid) {$/;"	f
+pid_bitmap	thread/thread.c	/^    struct bitmap pid_bitmap; \/\/ pid 位图$/;"	m	struct:pid_pool	typeref:struct:pid_pool::bitmap	file:
+pid_bitmap_bits	thread/thread.c	/^uint8_t pid_bitmap_bits[128] = {0};$/;"	v
+pid_check	thread/thread.c	/^static bool pid_check(struct list_elem* pelem, int32_t pid) {$/;"	f	file:
+pid_lock	thread/thread.c	/^    struct lock pid_lock; \/\/ 分配 pid 锁$/;"	m	struct:pid_pool	typeref:struct:pid_pool::lock	file:
+pid_pool	thread/thread.c	/^struct pid_pool {$/;"	s	file:
+pid_pool	thread/thread.c	/^}pid_pool;$/;"	v	typeref:struct:pid_pool
+pid_pool_init	thread/thread.c	/^static void pid_pool_init(void) {$/;"	f	file:
+pid_start	thread/thread.c	/^    uint32_t pid_start; \/\/ 起始pid$/;"	m	struct:pid_pool	file:
 pid_t	thread/thread.h	/^typedef int16_t pid_t;$/;"	t
 pool	kernel/memory.c	/^struct pool {$/;"	s	file:
 pool_bitmap	kernel/memory.c	/^    struct bitmap pool_bitmap; \/\/ 位图结构, 用于管理物理内存$/;"	m	struct:pool	typeref:struct:pool::bitmap	file:
@@ -750,6 +768,8 @@ reg_lba_m	device/ide.c	/^#define reg_lba_m(/;"	d	file:
 reg_sect_cnt	device/ide.c	/^#define reg_sect_cnt(/;"	d	file:
 reg_status	device/ide.c	/^#define reg_status(/;"	d	file:
 register_handler	kernel/interrupt.c	/^void register_handler(uint8_t vector_no, intr_handler function) {$/;"	f
+release_pid	thread/thread.c	/^void release_pid(pid_t pid) {$/;"	f
+release_prog_resource	userprog/wait_exit.c	/^static void release_prog_resource(struct task_struct* release_thread) {$/;"	f	file:
 rewinddir	lib/user/syscall.c	/^void rewinddir(struct dir* dir) {$/;"	f
 rmdir	lib/user/syscall.c	/^int32_t rmdir(const char* pathname) {$/;"	f
 root_dir	fs/dir.c	/^struct dir root_dir; \/\/ 根目录$/;"	v	typeref:struct:dir
@@ -764,6 +784,7 @@ sec_cnt	device/ide.c	/^    uint32_t sec_cnt;		 \/\/ 本分区的扇区数目$/;"
 sec_cnt	device/ide.h	/^    uint32_t sec_cnt;           \/\/ 扇区数$/;"	m	struct:partition
 sec_cnt	fs/super_block.h	/^    uint32_t sec_cnt;       \/\/ 本分区总共的扇区数$/;"	m	struct:super_block
 sec_lba	fs/inode.c	/^    uint32_t sec_lba; \/\/ inode 所在的扇区号$/;"	m	struct:inode_position	file:
+section	command/start.S	/^section .text$/;"	l
 section	kernel/kernel.S	/^section .data$/;"	l
 section	kernel/kernel.S	/^section .text$/;"	l
 section	lib/kernel/print.S	/^section .data$/;"	l
@@ -843,6 +864,7 @@ sys_rewinddir	fs/fs.c	/^void sys_rewinddir(struct dir* dir) {$/;"	f
 sys_rmdir	fs/fs.c	/^int32_t sys_rmdir(const char* pathname) {$/;"	f
 sys_stat	fs/fs.c	/^int32_t sys_stat(const char* path, struct stat* buf) {$/;"	f
 sys_unlink	fs/fs.c	/^int32_t sys_unlink(const char* pathname) {$/;"	f
+sys_wait	userprog/wait_exit.c	/^pid_t sys_wait(int32_t* status) {$/;"	f
 sys_write	fs/fs.c	/^int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {$/;"	f
 syscall	userprog/syscall-init.c	/^typedef void* syscall;$/;"	t	file:
 syscall_handler	kernel/kernel.S	/^syscall_handler:$/;"	l
@@ -857,6 +879,7 @@ task_struct	thread/thread.h	/^struct task_struct {$/;"	s
 thread_all_list	thread/thread.c	/^struct list thread_all_list;            \/\/ 所有任务队列$/;"	v	typeref:struct:list
 thread_block	thread/thread.c	/^void thread_block(enum task_status stat) {$/;"	f
 thread_create	thread/thread.c	/^void thread_create(struct task_struct* pthread, thread_func function, void* func_arg) {$/;"	f
+thread_exit	thread/thread.c	/^void thread_exit(struct task_struct* thread_over, bool need_schedule) {$/;"	f
 thread_func	thread/thread.h	/^typedef void thread_func(void*);$/;"	t
 thread_init	thread/thread.c	/^void thread_init(void) {$/;"	f
 thread_ready_list	thread/thread.c	/^struct list thread_ready_list;          \/\/ 就绪队列$/;"	v	typeref:struct:list

@@ -156,7 +156,12 @@ void my_shell(void) {
         } else { // 外部命令需要从磁盘上加载
             int32_t pid = fork();
             if (pid) { // 父进程
-                while(1);
+                int32_t status;
+                int32_t child_pid = wait(&status);
+                if (child_pid == -1) {
+                    panic("my_shell: no child\n");
+                }
+                printf("child_pid %d, it's status: %d\n", child_pid, status);
             } else { // 子进程
                 make_clear_abs_path(argv[0], final_path);
                 argv[0] = final_path;
@@ -165,10 +170,10 @@ void my_shell(void) {
                 memset(&file_stat, 0, sizeof(struct stat));
                 if (stat(argv[0], &file_stat) == -1) {
                     printf("my_shell: cannot access %s: No such file or directory\n", argv[0]);
+                    exit(-1);
                 } else {
                     execv(argv[0], argv);
                 }
-                while(1);
             }
         }
         int32_t arg_idx = 0;
