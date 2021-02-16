@@ -21,6 +21,7 @@ DD_IN=$BIN
 DD_OUT="../hd60M.img"
 
 nasm -f elf ./start.S -o ./start.o
+# x86_64-elf-ar rcs simple_crt.a $OBJS start.o
 x86_64-elf-ar rcs simple_crt.a $OBJS start.o
 x86_64-elf-gcc $CFLAGS $LIBS -o $BIN".o" $BIN".c"
 # x86_64-elf-ld -melf_i386 $BIN".o" simple_crt.a -o $BIN
