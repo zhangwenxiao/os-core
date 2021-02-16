@@ -29,7 +29,9 @@ enum SYSCALL_NR {
    SYS_EXECV,
    SYS_EXIT,
    SYS_WAIT,
-   SYS_PIPE
+   SYS_PIPE,
+   SYS_FD_REDIRECT,
+   SYS_HELP
 };
 uint32_t getpid(void);
 uint32_t write(int32_t fd, const void* buf, uint32_t count);
@@ -57,4 +59,6 @@ int execv(const char* pathname, char** argv);
 void exit(int32_t status);
 pid_t wait(int32_t* status);
 int32_t pipe(int32_t pipefd[2]);
+void fd_redirect(uint32_t old_local_fd, uint32_t new_local_fd);
+void help(void);
 #endif

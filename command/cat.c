@@ -3,10 +3,18 @@
 #include "string.h"
 
 int main(int argc, char** argv) {
-    if (argc > 2 || argc == 1) {
-        printf("cat: only support 1 argument.\neg: cat filename\n");
+    if (argc > 2) {
+        printf("cat: argument error\n");
         exit(-2);
     }
+
+    if (argc == 1) {
+        char buf[512] = {0};
+        read(0, buf, 512);
+        printf("%s", buf);
+        exit(0);
+    }
+
     int buf_size = 1024;
     char abs_path[512] = {0};
     void* buf = malloc(buf_size);
