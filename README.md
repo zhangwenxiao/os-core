@@ -24,10 +24,6 @@ Ubuntu14.04
     git clone git@github.com:zhangwenxiao/os-core.git
     cd os-core
     ``` 
-- 新建虚拟硬盘
-    ```shell
-    bximage -hd -mode="flat" -size=60 -q hd60M.img
-    ```
 - 编译、运行
     ```shell
     make all
@@ -46,3 +42,5 @@ Ubuntu14.04
 - 2020.12.24 完成第十一章源码
 - 2021.01.10 完成第十二章源码
 - 2021.01.16 完成第十三章源码
+- 2021.02.10 完成第十四章源码
+- 2021.02.16 完成第十五章源码

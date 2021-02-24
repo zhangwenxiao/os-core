@@ -152,6 +152,41 @@ put_char:
    popad
    ret
 
+global cls_screen
+cls_screen:
+   pushad
+   ; 由于用户程序的 cpl 为 3, 显存段的 dpl 为 0, 故用于显存段的选择子 gs 在低于自己特权的环境中为 0
+   ; 导致用户程序再次进入中断后, gs 为 0, 故直接在 put_str 中每次都为 gs 赋值
+   mov ax, SELECTOR_VIDEO
+   mov gs, ax
+
+   mov ebx, 0
+   mov ecx, 80*25
+ .cls:
+   mov word [gs:ebx], 0x0720
+   add ebx, 2
+   loop .cls
+   mov ebx, 0
+
+ .set_cursor:
+; 1 先设置高 8 位
+   mov dx, 0x03d4
+   mov al, 0x0e
+   out dx, al
+   mov dx, 0x03d5
+   mov al, bh
+   out dx, al
+
+; 2 再设置低 8 位
+   mov dx, 0x03d4
+   mov al, 0x0f
+   out dx, al
+   mov dx, 0x03d5
+   mov al, bl
+   out dx, al
+   popad
+   ret
+
 ;--------------------   将小端字节序的数字变成对应的ascii后，倒置   -----------------------
 ;输入：栈中参数为待打印的数字
 ;输出：在屏幕上打印16进制数字,并不会打印前缀0x,如打印10进制15时，只会直接打印f，不会是0xf
